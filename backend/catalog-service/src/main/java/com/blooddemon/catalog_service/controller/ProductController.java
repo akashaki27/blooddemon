@@ -9,6 +9,10 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
+import java.util.Set;
+
+import java.math.BigDecimal;
+
 import org.springframework.data.domain.Page;
 
 @RestController
@@ -35,8 +39,13 @@ public class ProductController {
      * Returns products with paging and sorting.
      * Validates pagination and sort parameters before querying.
      */
+
     @GetMapping
     public Page<ProductResponseDto> getAllProducts(
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) BigDecimal minPrice,
+            @RequestParam(required = false) BigDecimal maxPrice,
+            @RequestParam(required = false) Boolean inStock,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "id") String sortBy,
@@ -52,8 +61,7 @@ public class ProductController {
                     HttpStatus.BAD_REQUEST, "Size must be between 1 and 100");
         }
 
-        if (!java.util.Set.of(
-                "id", "name", "price", "sku", "stockQuantity")
+        if (!Set.of("id", "name", "price", "sku", "stockQuantity")
                 .contains(sortBy)) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST, "Invalid sort field");
@@ -65,7 +73,26 @@ public class ProductController {
                     HttpStatus.BAD_REQUEST, "Direction must be asc or desc");
         }
 
-        return productService.getProducts(page, size, sortBy, direction);
+        if (minPrice != null && minPrice.signum() < 0) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Minimum price cannot be negative");
+        }
+
+        if (maxPrice != null && maxPrice.signum() < 0) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Maximum price cannot be negative");
+        }
+
+        if (minPrice != null && maxPrice != null
+                && minPrice.compareTo(maxPrice) > 0) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Minimum price cannot exceed maximum price");
+        }
+
+        return productService.searchProducts(
+                name, minPrice, maxPrice, inStock,
+                page, size, sortBy, direction);
     }
 
     /**
