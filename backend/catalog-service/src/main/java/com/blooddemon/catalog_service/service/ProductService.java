@@ -15,129 +15,173 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Service
 @Transactional
 public class ProductService {
 
-    private final ProductRepository productRepository;
+        private final ProductRepository productRepository;
 
-    public ProductService(ProductRepository productRepository) {
-        this.productRepository = productRepository;
-    }
-
-    // Create a product unless its SKU is already assigned to another product.
-    public ProductResponseDto createProduct(ProductRequestDto request) {
-        if (productRepository.existsBySku(request.sku())) {
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT,
-                    "A product with this SKU already exists");
+        public ProductService(ProductRepository productRepository) {
+                this.productRepository = productRepository;
         }
 
-        Product product = new Product(
-                request.name(),
-                request.description(),
-                request.price(),
-                request.sku(),
-                request.stockQuantity());
+        // Create a product unless its SKU is already assigned to another product.
+        public ProductResponseDto createProduct(ProductRequestDto request) {
+                if (productRepository.existsBySku(request.sku())) {
+                        throw new ResponseStatusException(
+                                        HttpStatus.CONFLICT,
+                                        "A product with this SKU already exists");
+                }
 
-        // Persist the new entity before mapping it to the API response.
-        Product savedProduct = productRepository.save(product);
+                Product product = new Product(
+                                request.name(),
+                                request.description(),
+                                request.price(),
+                                request.sku(),
+                                request.stockQuantity());
 
-        return toResponseDto(savedProduct);
-    }
+                // Persist the new entity before mapping it to the API response.
+                Product savedProduct = productRepository.save(product);
 
-    // Return all products as response DTOs without exposing entity objects.
-    @Transactional(readOnly = true)
-    public List<ProductResponseDto> getAllProducts() {
-        return productRepository.findAll()
-                .stream()
-                .map(this::toResponseDto)
-                .toList();
-    }
-
-    // Look up one product and report a 404 when it does not exist.
-    @Transactional(readOnly = true)
-    public ProductResponseDto getProductById(Long id) {
-        Product product = productRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "Product not found with ID: " + id));
-
-        return toResponseDto(product);
-    }
-
-    public ProductResponseDto updateProduct(
-            Long id,
-            ProductRequestDto request) {
-
-        // An update cannot proceed unless the target product exists.
-        Product product = productRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "Product not found with ID: " + id));
-
-        boolean skuChanged = !product.getSku().equals(request.sku());
-
-        // Check uniqueness only when the request changes the product's SKU.
-        if (skuChanged && productRepository.existsBySku(request.sku())) {
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT,
-                    "A product with this SKU already exists");
+                return toResponseDto(savedProduct);
         }
 
-        product.updateDetails(
-                request.name(),
-                request.description(),
-                request.price(),
-                request.sku(),
-                request.stockQuantity());
+        // Return all products as response DTOs without exposing entity objects.
+        @Transactional(readOnly = true)
+        public List<ProductResponseDto> getAllProducts() {
+                return productRepository.findAll()
+                                .stream()
+                                .map(this::toResponseDto)
+                                .toList();
+        }
 
-        // Save the updated entity and return its DTO representation.
-        Product savedProduct = productRepository.save(product);
+        // Look up one product and report a 404 when it does not exist.
+        @Transactional(readOnly = true)
+        public ProductResponseDto getProductById(Long id) {
+                Product product = productRepository.findById(id)
+                                .orElseThrow(() -> new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND,
+                                                "Product not found with ID: " + id));
 
-        return toResponseDto(savedProduct);
-    }
+                return toResponseDto(product);
+        }
 
-    // Return a page of products, sorted and paginated according to the request
-    // parameters.
-    @Transactional(readOnly = true)
-    public Page<ProductResponseDto> getProducts(
-            int page,
-            int size,
-            String sortBy,
-            String direction) {
+        public ProductResponseDto updateProduct(
+                        Long id,
+                        ProductRequestDto request) {
 
-        Sort sort = "desc".equalsIgnoreCase(direction)
-                ? Sort.by(sortBy).descending()
-                : Sort.by(sortBy).ascending();
+                // An update cannot proceed unless the target product exists.
+                Product product = productRepository.findById(id)
+                                .orElseThrow(() -> new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND,
+                                                "Product not found with ID: " + id));
 
-        Pageable pageable = PageRequest.of(page, size, sort);
+                boolean skuChanged = !product.getSku().equals(request.sku());
 
-        return productRepository.findAll(pageable)
-                .map(this::toResponseDto);
-    }
+                // Check uniqueness only when the request changes the product's SKU.
+                if (skuChanged && productRepository.existsBySku(request.sku())) {
+                        throw new ResponseStatusException(
+                                        HttpStatus.CONFLICT,
+                                        "A product with this SKU already exists");
+                }
 
-    // Delete the requested product, returning 404 if it cannot be found.
-    public void deleteProduct(Long id) {
-        Product product = productRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "Product not found with ID: " + id));
+                product.updateDetails(
+                                request.name(),
+                                request.description(),
+                                request.price(),
+                                request.sku(),
+                                request.stockQuantity());
 
-        productRepository.delete(product);
-    }
+                // Save the updated entity and return its DTO representation.
+                Product savedProduct = productRepository.save(product);
 
-    // Keep API responses decoupled from the persistence entity.
-    private ProductResponseDto toResponseDto(Product product) {
-        return new ProductResponseDto(
-                product.getId(),
-                product.getName(),
-                product.getDescription(),
-                product.getPrice(),
-                product.getSku(),
-                product.getStockQuantity(),
-                product.isActive());
-    }
+                return toResponseDto(savedProduct);
+        }
+
+        // Return a page of products, sorted and paginated according to the request
+        // parameters.
+        @Transactional(readOnly = true)
+        public Page<ProductResponseDto> getProducts(
+                        int page,
+                        int size,
+                        String sortBy,
+                        String direction) {
+
+                Sort sort = "desc".equalsIgnoreCase(direction)
+                                ? Sort.by(sortBy).descending()
+                                : Sort.by(sortBy).ascending();
+
+                Pageable pageable = PageRequest.of(page, size, sort);
+
+                return productRepository.findAll(pageable)
+                                .map(this::toResponseDto);
+        }
+
+        // Delete the requested product, returning 404 if it cannot be found.
+        public void deleteProduct(Long id) {
+                Product product = productRepository.findById(id)
+                                .orElseThrow(() -> new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND,
+                                                "Product not found with ID: " + id));
+
+                productRepository.delete(product);
+        }
+
+        // Search for products by name, returning a page of results.
+
+        @Transactional(readOnly = true)
+        public Page<ProductResponseDto> searchProducts(
+                        String name,
+                        BigDecimal minPrice,
+                        BigDecimal maxPrice,
+                        Boolean inStock,
+                        int page,
+                        int size,
+                        String sortBy,
+                        String direction) {
+
+                Sort sort = "desc".equalsIgnoreCase(direction)
+                                ? Sort.by(sortBy).descending()
+                                : Sort.by(sortBy).ascending();
+
+                Pageable pageable = PageRequest.of(page, size, sort);
+
+                String searchName = (name == null || name.isBlank())
+                                ? null
+                                : name.trim();
+
+                Page<Product> products;
+
+                if (searchName == null) {
+                        products = productRepository.findByFilters(
+                                        minPrice,
+                                        maxPrice,
+                                        inStock,
+                                        pageable);
+                } else {
+                        products = productRepository.searchByFilters(
+                                        searchName,
+                                        minPrice,
+                                        maxPrice,
+                                        inStock,
+                                        pageable);
+                }
+
+                return products.map(this::toResponseDto);
+        }
+
+        // Keep API responses decoupled from the persistence entity.
+        private ProductResponseDto toResponseDto(Product product) {
+                return new ProductResponseDto(
+                                product.getId(),
+                                product.getName(),
+                                product.getDescription(),
+                                product.getPrice(),
+                                product.getSku(),
+                                product.getStockQuantity(),
+                                product.isActive());
+        }
 }
