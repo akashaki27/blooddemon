@@ -76,6 +76,14 @@ public class Product {
         return active;
     }
 
+    public void deactivate() {
+        this.active = false;
+    }
+
+    public void activate() {
+        this.active = true;
+    }
+
     public void updateDetails(
             String name,
             String description,

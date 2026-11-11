@@ -46,6 +46,8 @@ public class ProductController {
             @RequestParam(required = false) BigDecimal minPrice,
             @RequestParam(required = false) BigDecimal maxPrice,
             @RequestParam(required = false) Boolean inStock,
+            @RequestParam(required = false) Boolean active,
+            @RequestParam(defaultValue = "false") boolean includeInactive,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "id") String sortBy,
@@ -91,7 +93,7 @@ public class ProductController {
         }
 
         return productService.searchProducts(
-                name, minPrice, maxPrice, inStock,
+                name, minPrice, maxPrice, inStock, active, includeInactive,
                 page, size, sortBy, direction);
     }
 
@@ -113,6 +115,11 @@ public class ProductController {
             @PathVariable Long id,
             @Valid @RequestBody ProductRequestDto request) {
         return productService.updateProduct(id, request);
+    }
+
+    @PatchMapping("/{id}/activate")
+    public ProductResponseDto activateProduct(@PathVariable Long id) {
+        return productService.activateProduct(id);
     }
 
     // Deletes a product by id and returns no content.

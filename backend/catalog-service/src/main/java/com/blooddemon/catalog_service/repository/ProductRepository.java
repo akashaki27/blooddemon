@@ -13,41 +13,55 @@ import java.util.Optional;
 
 public interface ProductRepository extends JpaRepository<Product, Long> {
 
-  Optional<Product> findBySku(String sku);
+    Optional<Product> findBySku(String sku);
 
-  boolean existsBySku(String sku);
+    boolean existsBySku(String sku);
 
-  @Query("""
-      SELECT p FROM Product p
-      WHERE LOWER(p.name) LIKE LOWER(CONCAT('%', :name, '%'))
-        AND (:minPrice IS NULL OR p.price >= :minPrice)
-        AND (:maxPrice IS NULL OR p.price <= :maxPrice)
-        AND (
-            :inStock IS NULL
-            OR (:inStock = true AND p.stockQuantity > 0)
-            OR (:inStock = false AND p.stockQuantity = 0)
-        )
-      """)
-  Page<Product> searchByFilters(
-      @Param("name") String name,
-      @Param("minPrice") BigDecimal minPrice,
-      @Param("maxPrice") BigDecimal maxPrice,
-      @Param("inStock") Boolean inStock,
-      Pageable pageable);
+    @Query("""
+                        SELECT p FROM Product p
+                        WHERE LOWER(p.name) LIKE LOWER(CONCAT('%', :name, '%'))
+                          AND (:minPrice IS NULL OR p.price >= :minPrice)
+                          AND (:maxPrice IS NULL OR p.price <= :maxPrice)
+                          AND (
+                              :inStock IS NULL
+                              OR (:inStock = true AND p.stockQuantity > 0)
+                              OR (:inStock = false AND p.stockQuantity = 0)
+                          )
+                          AND (
+                (:active IS NOT NULL AND p.active = :active)
+                OR
+                (:active IS NULL AND (:includeInactive = true OR p.active = true))
+            )
+                        """)
+    Page<Product> searchByFilters(
+            @Param("name") String name,
+            @Param("minPrice") BigDecimal minPrice,
+            @Param("maxPrice") BigDecimal maxPrice,
+            @Param("inStock") Boolean inStock,
+            @Param("active") Boolean active,
+            @Param("includeInactive") boolean includeInactive,
+            Pageable pageable);
 
-  @Query("""
-      SELECT p FROM Product p
-      WHERE (:minPrice IS NULL OR p.price >= :minPrice)
-        AND (:maxPrice IS NULL OR p.price <= :maxPrice)
-        AND (
-            :inStock IS NULL
-            OR (:inStock = true AND p.stockQuantity > 0)
-            OR (:inStock = false AND p.stockQuantity = 0)
-        )
-      """)
-  Page<Product> findByFilters(
-      @Param("minPrice") BigDecimal minPrice,
-      @Param("maxPrice") BigDecimal maxPrice,
-      @Param("inStock") Boolean inStock,
-      Pageable pageable);
+    @Query("""
+                        SELECT p FROM Product p
+                        WHERE (:minPrice IS NULL OR p.price >= :minPrice)
+                          AND (:maxPrice IS NULL OR p.price <= :maxPrice)
+                          AND (
+                              :inStock IS NULL
+                              OR (:inStock = true AND p.stockQuantity > 0)
+                              OR (:inStock = false AND p.stockQuantity = 0)
+                          )
+                          AND (
+                (:active IS NOT NULL AND p.active = :active)
+                OR
+                (:active IS NULL AND (:includeInactive = true OR p.active = true))
+            )
+                        """)
+    Page<Product> findByFilters(
+            @Param("minPrice") BigDecimal minPrice,
+            @Param("maxPrice") BigDecimal maxPrice,
+            @Param("inStock") Boolean inStock,
+            @Param("active") Boolean active,
+            @Param("includeInactive") boolean includeInactive,
+            Pageable pageable);
 }
