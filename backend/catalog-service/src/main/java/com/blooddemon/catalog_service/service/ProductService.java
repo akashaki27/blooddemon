@@ -101,6 +101,24 @@ public class ProductService {
                 return toResponseDto(savedProduct);
         }
 
+        public ProductResponseDto activateProduct(Long id) {
+                Product product = productRepository.findById(id)
+                                .orElseThrow(() -> new ResponseStatusException(
+                                                HttpStatus.NOT_FOUND,
+                                                "Product not found with ID: " + id));
+
+                if (product.isActive()) {
+                        throw new ResponseStatusException(
+                                        HttpStatus.CONFLICT,
+                                        "Product is already active");
+                }
+
+                product.activate(); // Mark the product as active
+                Product savedProduct = productRepository.save(product); // Persist the change
+
+                return toResponseDto(savedProduct);
+        }
+
         // Return a page of products, sorted and paginated according to the request
         // parameters.
         @Transactional(readOnly = true)
@@ -120,24 +138,32 @@ public class ProductService {
                                 .map(this::toResponseDto);
         }
 
-        // Delete the requested product, returning 404 if it cannot be found.
+        // Soft-delete the requested product, returning 404 if it cannot be found.
         public void deleteProduct(Long id) {
                 Product product = productRepository.findById(id)
                                 .orElseThrow(() -> new ResponseStatusException(
                                                 HttpStatus.NOT_FOUND,
                                                 "Product not found with ID: " + id));
 
-                productRepository.delete(product);
+                if (!product.isActive()) {
+                        throw new ResponseStatusException(
+                                        HttpStatus.CONFLICT,
+                                        "Product is already deactivated");
+                }
+
+                product.deactivate(); // Mark the product as inactive instead of deleting it
+                productRepository.save(product); // Persist the change to the database
         }
 
         // Search for products by name, returning a page of results.
 
-        @Transactional(readOnly = true)
         public Page<ProductResponseDto> searchProducts(
                         String name,
                         BigDecimal minPrice,
                         BigDecimal maxPrice,
                         Boolean inStock,
+                        Boolean active,
+                        boolean includeInactive,
                         int page,
                         int size,
                         String sortBy,
@@ -155,18 +181,22 @@ public class ProductService {
 
                 Page<Product> products;
 
-                if (searchName == null) {
-                        products = productRepository.findByFilters(
-                                        minPrice,
-                                        maxPrice,
-                                        inStock,
-                                        pageable);
-                } else {
+                if (searchName != null) {
                         products = productRepository.searchByFilters(
                                         searchName,
                                         minPrice,
                                         maxPrice,
                                         inStock,
+                                        active,
+                                        includeInactive, // Include inactive products in the search
+                                        pageable);
+                } else {
+                        products = productRepository.findByFilters(
+                                        minPrice,
+                                        maxPrice,
+                                        inStock,
+                                        active,
+                                        includeInactive, // Include inactive products in the search
                                         pageable);
                 }
 
